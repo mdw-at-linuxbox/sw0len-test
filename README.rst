@@ -33,14 +33,16 @@ service and two different credentials, something like this::
 
 Once you have that, you can run the tests with::
 
-	SWIFT_CONF=your.conf ./virtualenv/bin/nosetests
+	SWIFT_TEST_CONFIG_FILE=your.conf ./virtualenv/bin/nosetests
 
 You can specify what test(s) to run::
 
-	SWIFT_CONF=your.conf ./virtualenv/bin/nosetests XXX-PUT-A-TEST-NAME-HERE
+	SWIFT_TEST_CONFIG_FILE=your.conf ./virtualenv/bin/nosetests \
+	XXX-PUT-A-TEST-NAME-HERE
 
 Some tests have attributes set based on their current reliability and
 things like AWS not enforcing their spec stricly. You can filter tests
 based on their attributes::
 
-	SWIFT_CONF=your.conf ./virtualenv/bin/nosetests -a '!fails_on_aws'
+	SWIFT_TEST_CONFIG_FILE=your.conf ./virtualenv/bin/nosetests \
+	-a '!fails_on_aws'
