@@ -1,0 +1,3 @@
+PyYAML
+nose >=1.0.0
+python-swiftclient >= 3.0.0
