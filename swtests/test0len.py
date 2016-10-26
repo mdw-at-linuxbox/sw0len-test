@@ -1,23 +1,109 @@
-from . import ( makeconnection, )
+#
+# try to read DLO objects
+# with 0 segments.
+#
+from . import (makeconnection, flush_connection, config)
+from nose.plugins.attrib import attr
+from nose.tools import eq_ as eq
+import sys
 
-container1 = "box"
-container2 = "container"
-myobj = "myobj"
+# in the below, objects are first populated in __init__.py
+# make_containers_and_objects
+# this will make container/myobj container/mynewobj container/myemptyobj
 
 # trivial test - proof of concept
+# make and get rid of "box"
 def test_trivial_make_delete_container():
- c = makeconnection()
- e = c.put_container(container1)
- e = c.delete_container(container1)
-def test_make_NZ_object():
- c = makeconnection()
- e = c.put_container(container2)
- e = c.put_object(container2, myobj + "/00000001", "a short bit of text")
- e = c.put_object(container2, myobj + "/00000002")
- e = c.put_object(container2, myobj,
-   headers={'X-Object-Manifest': container2 + "/" + myobj + "/"})
- (rh,rc) = c.get_object(container2, myobj, headers = {'Range': 'bytes=5-20'})
+    c = makeconnection()
+    e = c.put_container(config.container1)
+    e = c.delete_container(config.container1)
 
-def test_bad_cleanup_fixmefixmefixme():
- c = makeconnection()
- e = c.delete_container(container2)
+# try to fetch a byte range.  Just try
+@attr('fails_on_master')
+def test_read_NZ_object_byterange():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj, headers = {'Range': 'bytes=5-20'})
+
+# fetch NZ object parts, should always work
+def test_read_NZ_object_parts():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
+    eq(rc, "a short bit of text")
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000002")
+    eq(rc, "")
+
+# fetch NZ object parts, will probably succeed even if 0lenfix isn't applied.
+def test_read_NZ_whole_object():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj)
+    eq(rc, "a short bit of text")
+
+# if 0lenfix isn't applied, test_read_NZ_whole_object leaves the
+#  connection "damaged", which will show up here as a timeout.
+#  that's because the server is still "processing" the request
+#  even though we read everything and think all succeeded.
+def test_read_NZ_part_again():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000002")
+    eq(rc, "")
+
+# even if the previous request timed out, this one (with a new connection)
+# will succeed.
+def test_read_NZ_part_yet_again():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000002")
+    eq(rc, "")
+
+# read the NZN parts.  timeout will discard the connection,
+# so this should always succeed.
+def test_read_NZN_object_parts():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.mynewobj + "/00000001")
+    eq(rc, "a short bit of text")
+    (rh,rc) = c.get_object(config.container2, config.mynewobj + "/00000002")
+    eq(rc, "")
+    (rh,rc) = c.get_object(config.container2, config.mynewobj + "/00000003")
+    eq(rc, "and another short piece of text")
+
+# read the NZN parts.  will hang if 0lenfix not applied.
+def test_read_NZN_object():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.mynewobj)
+    eq(rc, "a short bit of textand another short piece of text")
+
+# should always work, even if timeout happened before this.
+def test_read_NZN_part_again():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.mynewobj + "/00000002")
+    eq(rc, "")
+
+# let's try some byte ranges on NZN.
+@attr('fails_on_master')
+def test_read_NZ_object_byterange1():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.mynewobj, headers = {'Range': 'bytes=0-18'})
+    eq(rc, "a short bit of text")
+
+@attr('fails_on_master')
+def test_read_NZ_object_byterange2():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.mynewobj, headers = {'Range': 'bytes=19-49'})
+    eq(rc, "and another short piece of text")
+
+# make NZN object into NNN, now read should work.
+def test_patch_then_read_NZN_object():
+    flush_connection()
+    c = makeconnection()
+    e = c.put_object(config.container2, config.mynewobj + "/00000002", "something extra")
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.mynewobj)
+    eq(rc, "a short bit of textsomething extraand another short piece of text")
+
+# read Z object.  should fail unless other part of 0lenfix applied too.
+def test_read_Z_object():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myemptyobj)
+    eq(rc, "")
+
+def test_ends():
+    pass
