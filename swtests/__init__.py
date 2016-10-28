@@ -100,7 +100,7 @@ def read_config(fp, defaults=None):
 
 def readin_configuration():
     global swift, config
-    mark = True
+    mark = 0
     swift.clear()
     config.clear()
     d = {}
@@ -121,7 +121,7 @@ def readin_configuration():
     if auth is not None:
 	m = re.match("([a-z]*)://([^/]*):([^/]*)(/.*/)([^/]*)$", auth)
 	if m:
-	    mark = False
+	    mark |= 1
 	    func_test['auth_ssl'] = "yes" if m.group(1) == 'https' else "no"
 	    func_test['auth_host'] = m.group(2)
 	    func_test['auth_port'] = m.group(3)
@@ -130,7 +130,7 @@ def readin_configuration():
 	else:
 	    m = re.match("([a-z]*)://([^/]*)(/.*/)([^/]*)$", auth)
 	    if m:
-		mark = False
+		mark |= 1
 		func_test['auth_ssl'] = "yes" if m.group(1) == 'https' else "no"
 		func_test['auth_host'] = m.group(2)
 		func_test['auth_port'] = '443' if func_test['auth_ssl'] == "yes" else '80'
@@ -141,7 +141,7 @@ def readin_configuration():
     if user is not None:
 	m = re.match("(.*):(.*)", user)
 	if m:
-	    mark = False
+	    mark |=2
 	    func_test['account'] = m.group(1)
 	    func_test['username'] = m.group(2)
 	else:
@@ -151,13 +151,19 @@ def readin_configuration():
     d['func_test'] = func_test
     try:
 	with file(config_file) as f:
-	    config.update(read_config(f, d))
+	    config.update(read_config(f))
     except IOError, i:
 	e = sys.exc_info()[0]
-	if mark:
+	if mark != 3:
 	    sys.stderr.write("warning: can't reading config file '%s': %s\n" % (f, e))
-	d['func_test'] = Bunch.fromDict(func_test)
-	config.update(d)
+    if not config.get('func_test'):
+	config['func_test'] = Bunch()
+    for j in func_test:
+	if not config.get('func_test').get(j):
+	    config['func_test'][j] = func_test[j]
+    for j in d:
+	if not config.get(j):
+	    config[j] = d[j]
 
 def make_containers_and_objects():
     c = makeconnection()
