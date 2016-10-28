@@ -47,9 +47,12 @@ class TestConnection():
 	return e
 
 def get_auth(c):
+    def_port = '443' if c.func_test.auth_ssl == "yes" else '80'
     auth = 'https' if c.func_test.auth_ssl == "yes" else 'http'
     auth += '://'
     auth += c.func_test.auth_host
+    if c.func_test.auth_port != def_port:
+	auth += ':' + c.func_test.auth_port
     auth += c.func_test.auth_prefix
     auth += "1.0"
     return auth
