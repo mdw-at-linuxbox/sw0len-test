@@ -3,8 +3,9 @@
 # with 0 segments.
 #
 from . import (makeconnection, flush_connection, config)
+from swiftclient.exceptions import ClientException
 from nose.plugins.attrib import attr
-from nose.tools import eq_ as eq
+from nose.tools import (eq_ as eq, raises)
 import sys
 
 # in the below, objects are first populated in __init__.py
@@ -24,8 +25,23 @@ def test_read_NZ_object_byterange():
     c = makeconnection()
     (rh,rc) = c.get_object(config.container2, config.myobj, headers = {'Range': 'bytes=5-20'})
 
+# fetch NZ object parts, will sometimes fail
+@attr('fails_on_master')
+def test_read_NZ_object_part_may_fail():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
+    eq(rc, "a short bit of text")
+
+# fetch NZ object parts, will sometimes fail
+@attr('fails_on_master')
+def test_read_NZ_object_part_should_work():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
+    eq(rc, "a short bit of text")
+
 # fetch NZ object parts, should always work
-def test_read_NZ_object_parts():
+def test_read_NZ_object_all_parts():
+    flush_connection()
     c = makeconnection()
     (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
     eq(rc, "a short bit of text")
@@ -104,6 +120,27 @@ def test_read_Z_object():
     c = makeconnection()
     (rh,rc) = c.get_object(config.container2, config.myemptyobj)
     eq(rc, "")
+
+@attr('giant')
+@raises(ClientException)
+def test_read_nonexistant_object():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, "nosuchobject")
+    eq(rc, "a short bit of text")
+
+# fetch NZ object parts, will sometimes fail
+@attr('giant')
+def test_read_NZ_object_part_may_fail():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
+    eq(rc, "a short bit of text")
+
+# fetch NZ object parts again - exactly the same but should work
+@attr('giant')
+def test_read_NZ_object_part_should_work():
+    c = makeconnection()
+    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
+    eq(rc, "a short bit of text")
 
 def test_ends():
     pass

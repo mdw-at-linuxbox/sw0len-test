@@ -18,8 +18,8 @@ tests = [
 		swtests.test0len.test_trivial_make_delete_container),
 	('test_read_NZ_object_byterange',
 		swtests.test0len.test_read_NZ_object_byterange),
-	('test_read_NZ_object_parts',
-		swtests.test0len.test_read_NZ_object_parts),
+	('test_read_NZ_object_all_parts',
+		swtests.test0len.test_read_NZ_object_all_parts),
 	('test_read_NZ_whole_object',
 		swtests.test0len.test_read_NZ_whole_object),
 	('test_read_NZ_part_again',
@@ -40,18 +40,28 @@ tests = [
 		swtests.test0len.test_patch_then_read_NZN_object),
 	('test_read_Z_object',
 		swtests.test0len.test_read_Z_object),
+	('test_read_nonexistant_object',
+		swtests.test0len.test_read_nonexistant_object),
+	('test_read_NZ_object_part_may_fail',
+		swtests.test0len.test_read_NZ_object_part_may_fail),
+	('test_read_NZ_object_part_should_work',
+		swtests.test0len.test_read_NZ_object_part_should_work),
 	('test_ends',
 		swtests.test0len.test_ends),
 	]
 
 def _main():
     for j in tests:
-	if j[0] == 'test_read_NZ_object_byterange':
+	if j[0] == 'test_read_nonexistant_object':
 	    pass
 	else:
-	    if j[0] != 'test_read_NZ_object_parts':
-		print j[0] + " (skipped)"
-		continue
+	    if j[0] == 'test_read_NZ_object_part_may_fail':
+		pass
+	    else:
+		if j[0] == 'test_read_NZ_object_part_should_work':
+		    pass
+		else:
+		    continue
 	print j[0] + " ...",
 	try:
 	    j[1]()
