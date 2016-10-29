@@ -38,11 +38,18 @@ Once you have that, you can run the tests with::
 You can specify what test(s) to run::
 
 	SWIFT_TEST_CONFIG_FILE=your.conf ./virtualenv/bin/nosetests \
-	XXX-PUT-A-TEST-NAME-HERE
+	--tests=swtests.test0len:test_trivial_make_delete_container,\
+	swtests.test0len:test_read_NZ_object_byterange,\
+	swtests.test0len:test_read_NZ_object_parts
 
-Some tests have attributes set based on their current reliability and
-things like AWS not enforcing their spec stricly. You can filter tests
-based on their attributes::
+Note the use of ``:`` and ``,``.  If you use . instead of :, that
+will not result in running anything.  Also note ``--tests=``.  The
+nosetests documentation would have you believe that's optional.
+That only works if you want exactly one test (no ``,``).
+
+
+Some tests have attributes set based on known problems.  You can filter
+things known not to work on current master (October 2016) this way:
 
 	SWIFT_TEST_CONFIG_FILE=your.conf ./virtualenv/bin/nosetests \
-	-a '!fails_on_aws'
+	-a '!fails_on_master'
