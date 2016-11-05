@@ -23,21 +23,18 @@ def test_trivial_make_delete_container():
 @attr('fails_on_master')
 def test_read_NZ_object_byterange():
     c = makeconnection()
-    (rh,rc) = c.get_object(config.container2, config.myobj, headers = {'Range': 'bytes=5-20'})
-
-# fetch NZ object parts, will sometimes fail
-@attr('fails_on_master')
-def test_read_NZ_object_part_may_fail():
-    c = makeconnection()
-    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
-    eq(rc, "a short bit of text")
-
-# fetch NZ object parts, will sometimes fail
-@attr('fails_on_master')
-def test_read_NZ_object_part_should_work():
-    c = makeconnection()
-    (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
-    eq(rc, "a short bit of text")
+    need_to_flush = True
+    try:
+        (rh,rc) = c.get_object(config.container2, config.myobj, headers = {'Range': 'bytes=5-20'})
+	eq(rc, "rt bit of text")
+	need_to_flush = False
+	(rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
+	eq(rc, "a short bit of text")
+    finally:
+        # the flush_connection here is in case this test leaves the connection broken.
+	#  for the broken connection case, see read_after_error later.
+	if need_to_flush:
+	    flush_connection()
 
 # fetch NZ object parts, should always work
 def test_read_NZ_object_all_parts():
@@ -48,18 +45,12 @@ def test_read_NZ_object_all_parts():
     (rh,rc) = c.get_object(config.container2, config.myobj + "/00000002")
     eq(rc, "")
 
-# fetch NZ object parts, will probably succeed even if 0lenfix isn't applied.
+# fetch NZ object parts.  The first part should work even if 0lenfix is
+#  not applied.  The 2nd read will fail if 0lenfix isn't applied.
 def test_read_NZ_whole_object():
     c = makeconnection()
     (rh,rc) = c.get_object(config.container2, config.myobj)
     eq(rc, "a short bit of text")
-
-# if 0lenfix isn't applied, test_read_NZ_whole_object leaves the
-#  connection "damaged", which will show up here as a timeout.
-#  that's because the server is still "processing" the request
-#  even though we read everything and think all succeeded.
-def test_read_NZ_part_again():
-    c = makeconnection()
     (rh,rc) = c.get_object(config.container2, config.myobj + "/00000002")
     eq(rc, "")
 
@@ -103,12 +94,14 @@ def test_read_NZ_object_byterange1():
 @attr('fails_on_master')
 def test_read_NZ_object_byterange2():
     c = makeconnection()
-    (rh,rc) = c.get_object(config.container2, config.mynewobj, headers = {'Range': 'bytes=19-49'})
-    eq(rc, "and another short piece of text")
+    try:
+	(rh,rc) = c.get_object(config.container2, config.mynewobj, headers = {'Range': 'bytes=19-49'})
+	eq(rc, "and another short piece of text")
+    finally:
+	flush_connection()
 
 # make NZN object into NNN, now read should work.
 def test_patch_then_read_NZN_object():
-    flush_connection()
     c = makeconnection()
     e = c.put_object(config.container2, config.mynewobj + "/00000002", "something extra")
     c = makeconnection()
@@ -121,22 +114,22 @@ def test_read_Z_object():
     (rh,rc) = c.get_object(config.container2, config.myemptyobj)
     eq(rc, "")
 
-@attr('giant')
-@raises(ClientException)
-def test_read_nonexistant_object():
+# try to read after a reported error.  The read seems to fail w/ ssl
+#  when using ssl and branch wip-rgw-openssl-4.
+@attr('read_after_err')
+def test_read_after_error():
     c = makeconnection()
-    (rh,rc) = c.get_object(config.container2, "nosuchobject")
-    eq(rc, "a short bit of text")
-
-# fetch NZ object parts, will sometimes fail
-@attr('giant')
-def test_read_NZ_object_part_may_fail():
-    c = makeconnection()
+    did_it_fail = False
+    try:
+	(rh,rc) = c.get_object(config.container2, "nosuchobject")
+    except ClientException as e:
+	did_it_fail = True
+    eq(did_it_fail, True)
     (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
     eq(rc, "a short bit of text")
 
-# fetch NZ object parts again - exactly the same but should work
-@attr('giant')
+# fetch valid object part again - exactly the same but should work
+@attr('read_after_err')
 def test_read_NZ_object_part_should_work():
     c = makeconnection()
     (rh,rc) = c.get_object(config.container2, config.myobj + "/00000001")
